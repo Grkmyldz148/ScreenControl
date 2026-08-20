@@ -1,0 +1,25 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>ScreenControl</title>
+        <item>
+            <title>1.0.0</title>
+            <pubDate>Thu, 20 Aug 2026 11:56:00 +0300</pubDate>
+            <link>https://github.com/Grkmyldz148/ScreenControl</link>
+            <sparkle:fullReleaseNotesLink>https://github.com/Grkmyldz148/ScreenControl/releases</sparkle:fullReleaseNotesLink>
+            <sparkle:version>1.0.0</sparkle:version>
+            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[First public release.
+
+- Per-display brightness sliders for the built-in panel and DDC/CI monitors.
+- `F1`/`F2` drive both displays together through a calibration curve you teach it.
+- True black on external monitors: gamma dimming below DDC zero, then backlight off.
+- On-screen HUD, hot-plug and sleep handling, `--diagnose` troubleshooting mode.
+- Signed and notarized, with automatic updates.
+]]></description>
+            <enclosure url="https://github.com/Grkmyldz148/ScreenControl/releases/download/v1.0.0/ScreenControl-1.0.0.zip" length="1539843" type="application/octet-stream" sparkle:edSignature="COeWOxXGky8tib/iVqaYBYZKIcehh2Yqxmm5uKEHfJje62W9847iYuMUymMebXcJxdKf4X+x0ANC4B2dnwxsAA=="/>
+        </item>
+    </channel>
+</rss>
