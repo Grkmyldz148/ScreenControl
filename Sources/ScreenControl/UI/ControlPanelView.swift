@@ -3,6 +3,7 @@ import AppKit
 
 struct ControlPanelView: View {
     @ObservedObject var controller: BrightnessController
+    @ObservedObject var updater: UpdateController
     @ObservedObject var settings = SettingsBridge.shared
 
     var onQuit: () -> Void
@@ -72,6 +73,14 @@ struct ControlPanelView: View {
             Toggle("Bağlanınca parlaklığı geri yükle", isOn: $settings.restoreOnWake)
             Divider()
             Button("Ekranları yeniden tara") { controller.refreshDisplays() }
+            if updater.isAvailable {
+                Divider()
+                Toggle("Güncellemeleri otomatik ara", isOn: $updater.automaticallyChecks)
+                Button("Güncellemeleri denetle…") { updater.checkForUpdates() }
+                    .disabled(!updater.canCheckForUpdates)
+            }
+            Divider()
+            Text("Sürüm \(UpdateController.shortVersion)")
         } label: {
             Image(systemName: "gearshape")
         }

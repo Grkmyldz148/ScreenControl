@@ -1,7 +1,6 @@
 # Swift Package Manager
 .build/
 .swiftpm/
-Package.resolved
 
 # Xcode
 *.xcodeproj
@@ -13,3 +12,5 @@ DerivedData/
 
 # Build output
 *.app
+dist/
+Notes/*.local.md

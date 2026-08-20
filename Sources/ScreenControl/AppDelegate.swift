@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let controller = BrightnessController()
     private let hud = BrightnessHUD()
+    private let updater = UpdateController()
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
 
@@ -45,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.behavior = .transient
         popover.animates = true
         popover.contentViewController = NSHostingController(
-            rootView: ControlPanelView(controller: controller) { NSApp.terminate(nil) }
+            rootView: ControlPanelView(controller: controller, updater: updater) { NSApp.terminate(nil) }
         )
     }
 

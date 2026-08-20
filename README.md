@@ -26,6 +26,7 @@ to **true black** — because DDC brightness `0` does not turn the backlight off
 - **On-screen HUD** that names the display being changed.
 - **Hot-plug and sleep aware** — rediscovers displays, re-applies dimming after wake.
 - **Never leaves you in the dark** — three independent recovery paths (see below).
+- **Automatic updates** — signed with Sparkle, checked daily, installed in place.
 - `--diagnose` mode for troubleshooting.
 
 ---
@@ -37,11 +38,30 @@ to **true black** — because DDC brightness `0` does not turn the backlight off
 - macOS 14 or later.
 - A monitor connected **directly** (HDMI / DisplayPort / USB-C). DisplayLink docks,
   Sidecar, and AirPlay displays do not carry an I2C channel.
-- Xcode command line tools to build.
+- Xcode command line tools — only if you build from source.
 
 ---
 
 ## Install
+
+**[⬇︎ Download the latest release](https://github.com/Grkmyldz148/ScreenControl/releases/latest)**
+— grab the `.dmg`, open it, drag **ScreenControl** into **Applications**.
+
+The build is signed with a Developer ID and notarized by Apple, so it opens with a
+normal double-click — no right-click trick, no Gatekeeper warning.
+
+On first launch the app asks for **Accessibility** permission
+(System Settings → Privacy & Security → Accessibility). Without it the sliders still
+work, but `F1`/`F2` cannot be intercepted.
+
+### Updates
+
+The app checks for updates once a day through [Sparkle](https://sparkle-project.org)
+and installs them in place. Each update is verified twice before it is applied: an
+EdDSA signature over the archive, and the app's Developer ID code signature. You can
+trigger a check yourself from the gear menu, or turn the automatic check off there.
+
+### Build from source
 
 ```bash
 git clone https://github.com/Grkmyldz148/ScreenControl.git
@@ -50,17 +70,13 @@ cd ScreenControl
 open -a ScreenControl
 ```
 
-`build.sh` compiles a release binary, assembles the `.app` bundle, signs it, and
-copies it to `/Applications`.
+`build.sh` compiles a release binary, assembles the `.app` bundle, embeds and signs
+Sparkle, and copies the result to `/Applications`.
 
 It signs with your **Developer ID** certificate if you have one, falling back to
 ad-hoc. This matters: macOS ties the Accessibility grant to the code signature, and
 an ad-hoc signature changes on every build — so you would have to re-grant the
 permission each time. Override with `CODESIGN_IDENTITY="..." ./build.sh install`.
-
-On first launch the app asks for **Accessibility** permission
-(System Settings → Privacy & Security → Accessibility). Without it the sliders still
-work, but `F1`/`F2` cannot be intercepted.
 
 ---
 
@@ -263,6 +279,7 @@ Sources/ScreenControl/
 ├── Core/BrightnessController.swift sync, hot-plug, persistence
 ├── Core/Settings.swift             UserDefaults + launch at login
 ├── Input/MediaKeyTap.swift         F1/F2 interception
+├── Update/UpdateController.swift   Sparkle automatic updates
 ├── UI/ControlPanelView.swift       menu bar panel
 ├── UI/BrightnessHUD.swift          on-screen indicator
 ├── AppDelegate.swift               status item, popover
@@ -272,6 +289,41 @@ Sources/ScreenControl/
 **Note:** the app's user interface and the source comments are in Turkish. The code
 itself, this README and all identifiers are in English. PRs adding localisation are
 welcome.
+
+---
+
+## Releasing
+
+Only relevant if you maintain a fork.
+
+```bash
+./release.sh 1.1.0 --dry-run   # build + notarize + package, publish nothing
+./release.sh 1.1.0             # …and publish to GitHub
+```
+
+`release.sh` builds and signs the app, submits it to Apple's notary service, staples
+the ticket, packages a `.dmg` and a `.zip`, regenerates `appcast.xml`, creates the
+GitHub release with both assets, and pushes the updated appcast. Release notes come
+from `Notes/<version>.md` when that file exists.
+
+The ZIP is what Sparkle downloads; the DMG is for humans. `appcast.xml` on `main` is
+the update feed — installed copies only see a new version once it is pushed, which is
+why publishing the release and pushing the appcast happen in that order.
+
+It needs, one time:
+
+```bash
+# Apple notarization credentials
+xcrun notarytool store-credentials "ScreenControl" \
+  --apple-id "<apple-id>" --team-id "<team-id>" --password "<app-specific-password>"
+
+# Sparkle update-signing key (private key lands in your login keychain)
+.build/artifacts/sparkle/Sparkle/bin/generate_keys
+```
+
+If you fork this, generate **your own** EdDSA key and put its public half in
+`build.sh` (`PUBLIC_ED_KEY`), and point `FEED_URL` at your own repository. Otherwise
+your builds will refuse every update you publish.
 
 ---
 
