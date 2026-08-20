@@ -63,7 +63,7 @@ final class UpdateController: NSObject, ObservableObject {
     var lastCheckDate: Date? { updaterController?.updater.lastUpdateCheckDate }
 
     static var shortVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "geliştirme"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development"
     }
 }
 

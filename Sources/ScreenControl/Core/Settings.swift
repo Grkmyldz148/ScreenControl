@@ -116,7 +116,7 @@ final class Settings {
                     try SMAppService.mainApp.unregister()
                 }
             } catch {
-                NSLog("ScreenControl: girişte başlatma değiştirilemedi: \(error)")
+                NSLog("ScreenControl: could not change launch at login: \(error)")
             }
         }
     }

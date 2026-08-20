@@ -34,7 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setUpStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         guard let button = statusItem.button else { return }
-        button.image = NSImage(systemSymbolName: "sun.max", accessibilityDescription: "Parlaklık")
+        button.image = NSImage(systemSymbolName: "sun.max", accessibilityDescription: "Brightness")
         button.image?.isTemplate = true
         button.imagePosition = .imageLeading
         button.action = #selector(togglePopover)

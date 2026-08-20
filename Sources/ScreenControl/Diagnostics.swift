@@ -8,61 +8,61 @@ enum Diagnostics {
 
     @MainActor
     static func run() {
-        print("ScreenControl tanılama")
+        print("ScreenControl diagnostics")
         print(String(repeating: "─", count: 52))
 
-        print("\nSistem")
-        print("  macOS       : \(ProcessInfo.processInfo.operatingSystemVersionString)")
-        print("  Mimari      : \(machineArchitecture())")
-        print("  DisplayServices: \(DisplayServices.isAvailable ? "var" : "YOK")")
-        print("  Erişilebilirlik izni: \(MediaKeyTap.hasAccessibilityPermission ? "verildi" : "VERİLMEDİ")")
+        print("\nSystem")
+        print("  macOS          : \(ProcessInfo.processInfo.operatingSystemVersionString)")
+        print("  Architecture   : \(machineArchitecture())")
+        print("  DisplayServices: \(DisplayServices.isAvailable ? "available" : "MISSING")")
+        print("  Accessibility  : \(MediaKeyTap.hasAccessibilityPermission ? "granted" : "NOT GRANTED")")
 
-        print("\nEkranlar")
+        print("\nDisplays")
         let displays = DisplayRegistry.discover()
-        if displays.isEmpty { print("  (hiç ekran bulunamadı)") }
+        if displays.isEmpty { print("  (no displays found)") }
 
         for display in displays {
             print("\n  ▸ \(display.name)")
-            print("    tip          : \(display.isBuiltin ? "dahili" : "harici")")
-            print("    CGDisplayID  : \(display.id)")
-            print("    kalıcı anahtar: \(display.persistentKey)")
+            print("    type          : \(display.isBuiltin ? "built-in" : "external")")
+            print("    CGDisplayID   : \(display.id)")
+            print("    persistent key: \(display.persistentKey)")
 
             if display.isBuiltin {
                 let value = DisplayServices.brightness(of: display.id)
-                print("    parlaklık    : \(value.map { String(format: "%.0f%%", $0 * 100) } ?? "okunamadı")")
-                print("    yazılabilir  : \(DisplayServices.canChangeBrightness(of: display.id) ? "evet" : "hayır")")
+                print("    brightness    : \(value.map { String(format: "%.0f%%", $0 * 100) } ?? "unreadable")")
+                print("    writable      : \(DisplayServices.canChangeBrightness(of: display.id) ? "yes" : "no")")
             } else if let ddc = display.ddc {
-                print("    DDC/CI       : çalışıyor")
+                print("    DDC/CI        : working")
                 for code in [VCPCode.brightness, .contrast, .volume, .powerMode] {
                     if let (current, maxValue) = ddc.read(code, retries: 2) {
                         let note = code == .powerMode
-                            ? "  (1=açık, 4=arka ışık kapalı)"
+                            ? "  (1=on, 4=backlight off)"
                             : ""
-                        print(String(format: "    VCP 0x%02X     : %d / %d%@", code.rawValue, current, maxValue, note))
+                        print(String(format: "    VCP 0x%02X      : %d / %d%@", code.rawValue, current, maxValue, note))
                     } else {
-                        print(String(format: "    VCP 0x%02X     : desteklenmiyor", code.rawValue))
+                        print(String(format: "    VCP 0x%02X      : not supported", code.rawValue))
                     }
                 }
                 // Kendi işlem içi durumumuz değil, ekrana gerçekten uygulanmış
                 // tabloyu okuyoruz — tanılama ayrı bir işlem olarak çalışıyor.
                 let dim = appliedGammaPeak(display.id)
-                print("    gamma karartma: \(dim < 0.999 ? String(format: "%.0f%% (aktif)", dim * 100) : "yok")")
+                print("    gamma dimming : \(dim < 0.999 ? String(format: "%.0f%% (active)", dim * 100) : "none")")
                 let curve = Settings.shared.curve(for: display.persistentKey)
-                print("    eşleme       : \(curve.isIdentity ? "doğrusal" : "\(curve.anchors.count) noktalı kalibrasyon")")
+                print("    mapping       : \(curve.isIdentity ? "linear" : "\(curve.anchors.count)-point calibration")")
             } else {
-                print("    DDC/CI       : CEVAP YOK")
-                print("                   (DisplayLink/Sidecar gibi sanal ekranlar ve bazı")
-                print("                    USB-C hub'lar I2C kanalını geçirmez)")
+                print("    DDC/CI        : NO RESPONSE")
+                print("                    (virtual displays such as DisplayLink or Sidecar, and")
+                print("                     some USB-C hubs, do not carry the I2C channel)")
             }
         }
 
-        print("\nAyarlar")
-        print("  ekranları eşitle    : \(Settings.shared.syncEnabled)")
-        print("  tuşları yakala      : \(Settings.shared.interceptBrightnessKeys)")
-        print("  sıfır altı karartma : \(Settings.shared.softwareDimmingEnabled)")
-        print("  sıfırda arka ışık   : \(Settings.shared.backlightOffAtZero ? "söndür" : "açık kalsın")")
-        print("  ekran göstergesi    : \(Settings.shared.showHUD)")
-        print("  girişte başlat      : \(Settings.shared.launchAtLogin)")
+        print("\nSettings")
+        print("  link displays      : \(Settings.shared.syncEnabled)")
+        print("  intercept keys     : \(Settings.shared.interceptBrightnessKeys)")
+        print("  dim below zero     : \(Settings.shared.softwareDimmingEnabled)")
+        print("  backlight at zero  : \(Settings.shared.backlightOffAtZero ? "off" : "stays on")")
+        print("  on-screen HUD      : \(Settings.shared.showHUD)")
+        print("  launch at login    : \(Settings.shared.launchAtLogin)")
         print("")
     }
 

@@ -262,7 +262,7 @@ enum DisplayRegistry {
         }) {
             return screen.localizedName
         }
-        return CGDisplayIsBuiltin(id) != 0 ? "Dahili Ekran" : "Harici Monitör"
+        return CGDisplayIsBuiltin(id) != 0 ? "Built-in Display" : "External Monitor"
     }
 
     /// Bağlı bütün ekranları bulur. DDC yoklaması yaptığı için blocking — arka planda çağır.

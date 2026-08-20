@@ -109,7 +109,7 @@ So instead of guessing, the app learns from you:
 1. Turn linked mode on.
 2. Set the built-in display wherever you like.
 3. Drag the external slider until the two look equal to your eye.
-4. Press **"Şu an eşit"** — "these match now".
+4. Press **"These match now"**.
 
 Repeat at a dark, a middle, and a bright level. The panel draws the resulting curve
 live; the dashed line is the linear mapping you started from.
@@ -288,9 +288,9 @@ Sources/ScreenControl/
 └── Diagnostics.swift               --diagnose
 ```
 
-**Note:** the app's user interface and the source comments are in Turkish. The code
-itself, this README and all identifiers are in English. PRs adding localisation are
-welcome.
+**Note:** the source comments are in Turkish; everything else — the user interface,
+the identifiers, this README — is in English. The UI strings are plain literals
+rather than a `.strings` catalogue, so PRs adding localisation are welcome.
 
 ---
 

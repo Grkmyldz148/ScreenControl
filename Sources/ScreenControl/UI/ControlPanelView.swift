@@ -50,7 +50,7 @@ struct ControlPanelView: View {
 
     private var header: some View {
         HStack {
-            Label("Parlaklık", systemImage: "sun.max.fill")
+            Label("Brightness", systemImage: "sun.max.fill")
                 .font(.system(size: 13, weight: .semibold))
             Spacer()
             if controller.isDiscovering {
@@ -64,23 +64,23 @@ struct ControlPanelView: View {
 
     private var settingsMenu: some View {
         Menu {
-            Toggle("Girişte başlat", isOn: $settings.launchAtLogin)
-            Toggle("Parlaklık tuşlarını yakala", isOn: $settings.interceptKeys)
-            Toggle("Sıfırın altında karart", isOn: $settings.softwareDimming)
-            Toggle("Sıfırda arka ışığı söndür", isOn: $settings.backlightOffAtZero)
-            Toggle("Ekran göstergesini çiz", isOn: $settings.showHUD)
-            Toggle("Menü çubuğunda yüzde göster", isOn: $settings.showPercentage)
-            Toggle("Bağlanınca parlaklığı geri yükle", isOn: $settings.restoreOnWake)
+            Toggle("Launch at login", isOn: $settings.launchAtLogin)
+            Toggle("Intercept brightness keys", isOn: $settings.interceptKeys)
+            Toggle("Dim below zero", isOn: $settings.softwareDimming)
+            Toggle("Backlight off at zero", isOn: $settings.backlightOffAtZero)
+            Toggle("Show on-screen HUD", isOn: $settings.showHUD)
+            Toggle("Show percentage in menu bar", isOn: $settings.showPercentage)
+            Toggle("Restore brightness on wake", isOn: $settings.restoreOnWake)
             Divider()
-            Button("Ekranları yeniden tara") { controller.refreshDisplays() }
+            Button("Rescan displays") { controller.refreshDisplays() }
             if updater.isAvailable {
                 Divider()
-                Toggle("Güncellemeleri otomatik ara", isOn: $updater.automaticallyChecks)
-                Button("Güncellemeleri denetle…") { updater.checkForUpdates() }
+                Toggle("Check for updates automatically", isOn: $updater.automaticallyChecks)
+                Button("Check for Updates…") { updater.checkForUpdates() }
                     .disabled(!updater.canCheckForUpdates)
             }
             Divider()
-            Text("Sürüm \(UpdateController.shortVersion)")
+            Text("Version \(UpdateController.shortVersion)")
         } label: {
             Image(systemName: "gearshape")
         }
@@ -94,7 +94,7 @@ struct ControlPanelView: View {
             Image(systemName: "display.trianglebadge.exclamationmark")
                 .font(.system(size: 22))
                 .foregroundStyle(.secondary)
-            Text("Kontrol edilebilir ekran bulunamadı")
+            Text("No controllable displays found")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
         }
@@ -106,8 +106,8 @@ struct ControlPanelView: View {
         VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: $controller.syncEnabled) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Ekranları eşitle").font(.system(size: 12, weight: .medium))
-                    Text("F1/F2 ikisini birlikte değiştirir")
+                    Text("Link displays").font(.system(size: 12, weight: .medium))
+                    Text("F1/F2 change both together")
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 }
@@ -130,12 +130,12 @@ struct ControlPanelView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Erişilebilirlik izni gerekli")
+                Text("Accessibility permission required")
                     .font(.system(size: 11, weight: .medium))
-                Text("F1/F2 tuşlarını yakalayabilmek için izin ver.")
+                Text("Grant it so F1/F2 can be intercepted.")
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
-                Button("Sistem Ayarları'nı aç") {
+                Button("Open System Settings") {
                     MediaKeyTap.requestAccessibilityPermission()
                     if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
                         NSWorkspace.shared.open(url)
@@ -150,11 +150,11 @@ struct ControlPanelView: View {
 
     private var footer: some View {
         HStack {
-            Text("⌃F1/⌃F2 · sadece monitör")
+            Text("⌃F1/⌃F2 · external only")
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
             Spacer()
-            Button("Çık", action: onQuit)
+            Button("Quit", action: onQuit)
                 .controlSize(.small)
         }
         .padding(.horizontal, 16)
@@ -193,7 +193,7 @@ private struct DisplayRow: View {
                 }
                 Spacer()
                 if snapshot.isBacklightOff {
-                    Text("arka ışık kapalı")
+                    Text("backlight off")
                         .font(.system(size: 9, weight: .semibold))
                         .padding(.horizontal, 4).padding(.vertical, 1)
                         .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 3))
@@ -203,7 +203,7 @@ private struct DisplayRow: View {
                     Image(systemName: "moon.fill")
                         .font(.system(size: 9))
                         .foregroundStyle(.tertiary)
-                        .help("Monitör en kısık halde, karartmaya gamma ile devam ediliyor")
+                        .help("Monitor is at its minimum; dimming continues with gamma")
                 }
                 Text("\(Int((displayedValue * 100).rounded()))%")
                     .font(.system(size: 11, weight: .medium).monospacedDigit())
@@ -236,7 +236,7 @@ private struct DisplayRow: View {
                     Image(systemName: "sun.max").font(.system(size: 10)).foregroundStyle(.tertiary)
                 }
             } else {
-                Text(snapshot.isBuiltin ? "Parlaklık kontrolü yok" : "Bu monitör DDC/CI'ye cevap vermiyor")
+                Text(snapshot.isBuiltin ? "No brightness control" : "This monitor does not answer DDC/CI")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
@@ -251,14 +251,19 @@ private struct CalibrationBlock: View {
     @ObservedObject var controller: BrightnessController
     @State private var curve: BrightnessCurve = .identity
 
+    private var curveSummary: String {
+        if curve.isIdentity { return "linear" }
+        return curve.anchors.count == 1 ? "1 point" : "\(curve.anchors.count) points"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Eşleme · \(snapshot.name)")
+                Text("Mapping · \(snapshot.name)")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text(curve.isIdentity ? "doğrusal" : "\(curve.anchors.count) nokta")
+                Text(curveSummary)
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
@@ -271,16 +276,16 @@ private struct CalibrationBlock: View {
                     controller.addCalibrationPoint(forKey: snapshot.key)
                     curve = controller.calibration(forKey: snapshot.key)
                 } label: {
-                    Label("Şu an eşit", systemImage: "plus.circle")
+                    Label("These match now", systemImage: "plus.circle")
                 }
                 .controlSize(.small)
-                .help("İki ekran şu an gözünüze eşit görünüyorsa bu noktayı kaydeder.")
+                .help("Saves this point if the two displays look equal to you right now.")
 
                 Button {
                     controller.resetCalibration(forKey: snapshot.key)
                     curve = controller.calibration(forKey: snapshot.key)
                 } label: {
-                    Label("Sıfırla", systemImage: "arrow.counterclockwise")
+                    Label("Reset", systemImage: "arrow.counterclockwise")
                 }
                 .controlSize(.small)
                 .disabled(curve.isIdentity)
