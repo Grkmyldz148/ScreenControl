@@ -87,8 +87,10 @@ cp -R ".build/bundle/$APP_NAME.app" "$APP"
 
 codesign --verify --deep --strict "$APP" || fail "İmza doğrulaması başarısız."
 # Zaman damgası olmayan imza notarize edilemez; sessizce ad-hoc'a düşmediğimizi doğrula.
-codesign -dvv "$APP" 2>&1 | grep -q "Timestamp=" || fail "İmzada güvenli zaman damgası yok."
-echo "   $(codesign -dv "$APP" 2>&1 | grep 'Authority=Developer ID' | head -1)"
+SIGN_INFO="$(codesign -dvv "$APP" 2>&1)"
+grep -q "^Timestamp=" <<<"$SIGN_INFO" || fail "İmzada güvenli zaman damgası yok."
+grep -q "^Authority=Developer ID Application" <<<"$SIGN_INFO" || fail "Developer ID ile imzalanmamış."
+echo "   $(grep '^Authority=Developer ID Application' <<<"$SIGN_INFO")"
 
 # ── Notarize et ───────────────────────────────────────────────────────────────
 

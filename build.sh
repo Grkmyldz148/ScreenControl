@@ -81,11 +81,30 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
+# Apple'ın zaman damgası sunucusu peş peşe gelen isteklerde ara sıra yanıt vermiyor
+# ("A timestamp was expected but was not found"). Damgasız imza notarize edilemediği
+# için, bu hatada artan aralıklarla tekrar deniyoruz; başka her hata anında düşer.
+sign() {
+    local target="$1" attempt out
+    for attempt in 1 2 3 4; do
+        if out="$(codesign --force --options runtime $TIMESTAMP_FLAG --sign "$IDENTITY" "$target" 2>&1)"; then
+            return 0
+        fi
+        grep -qi "timestamp" <<<"$out" || { echo "$out" >&2; return 1; }
+        [ "$attempt" -lt 4 ] || break
+        echo "   zaman damgası alınamadı, yeniden deneniyor ($attempt/3)…"
+        sleep $((attempt * 5))
+    done
+    echo "✗ Zaman damgası sunucusu yanıt vermedi: $target" >&2
+    return 1
+}
+
 # İmzalama içeriden dışarıya yapılmalı: en derindeki çalıştırılabilirden başlayıp
 # framework'e, en son da .app'e. Sparkle'ın SPM dağıtımı ad-hoc imzalı geliyor;
 # notarization ad-hoc iç bileşenleri reddettiği için hepsini yeniden imzalıyoruz.
 echo "▸ İmzalanıyor: $IDENTITY"
 SPARKLE_IN_APP="$APP/Contents/Frameworks/Sparkle.framework"
+SIGNED=()
 for nested in \
     "$SPARKLE_IN_APP/Versions/B/XPCServices/Downloader.xpc" \
     "$SPARKLE_IN_APP/Versions/B/XPCServices/Installer.xpc" \
@@ -93,10 +112,23 @@ for nested in \
     "$SPARKLE_IN_APP/Versions/B/Updater.app" \
     "$SPARKLE_IN_APP/Versions/B" ; do
     [ -e "$nested" ] || continue
-    codesign --force --options runtime $TIMESTAMP_FLAG --sign "$IDENTITY" "$nested"
+    sign "$nested"
+    SIGNED+=("$nested")
 done
+sign "$APP"
+SIGNED+=("$APP")
 
-codesign --force --options runtime $TIMESTAMP_FLAG --sign "$IDENTITY" "$APP"
+# Gömülü bileşenlerden biri damgasız kalırsa notarization tüm paketi reddeder ve
+# bunu ancak dakikalar sonra öğreniriz. Burada, ucuzken yakalıyoruz.
+if [ "$IDENTITY" != "-" ]; then
+    for target in "${SIGNED[@]}"; do
+        # Boruya değil değişkene alıyoruz: pipefail altında `grep -q` eşleşince
+        # çıkıyor, hâlâ yazan codesign SIGPIPE alıyor ve sağlam imza hatalı görünüyor.
+        info="$(codesign -dvv "$target" 2>&1)"
+        grep -q "^Timestamp=" <<<"$info" \
+          || { echo "✗ Zaman damgası yok: $target" >&2; exit 1; }
+    done
+fi
 
 echo "▸ Doğrulama:"
 codesign -dv "$APP" 2>&1 | grep -E 'Identifier|Authority|TeamIdentifier' | sed 's/^/   /'
