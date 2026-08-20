@@ -22,9 +22,17 @@ FEED_URL="https://raw.githubusercontent.com/Grkmyldz148/ScreenControl/main/appca
 PUBLIC_ED_KEY="DPfB2ibXtUxBqrHb3FBYwRpi66kARex0XPps4SB+cs0="
 
 # Developer ID varsa onu kullan: imza sabit kalır, böylece her derlemede
-# Erişilebilirlik iznini yeniden vermek gerekmez.
-IDENTITY="${CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null \
-  | grep "Developer ID Application" | head -1 | sed -E 's/.*"(.*)"/\1/')}"
+# Erişilebilirlik iznini yeniden vermek gerekmez. Sertifika yoksa ad-hoc'a düşeriz.
+#
+# Boru hattı bilerek `|| true` ile kapatılıyor ve `head` yerine `sed -n 1p`
+# kullanılıyor: pipefail altında eşleşme bulamayan bir grep, ya da girdiyi
+# sonuna kadar okumadan çıkan bir head, komut ikamesini başarısız kılar ve
+# betiği tek satır çıktı vermeden öldürür.
+IDENTITY="${CODESIGN_IDENTITY:-}"
+if [ -z "$IDENTITY" ]; then
+    IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+      | sed -n 's/.*"\(Developer ID Application[^"]*\)".*/\1/p' | sed -n 1p || true)"
+fi
 [ -z "$IDENTITY" ] && IDENTITY="-"
 
 # Ad-hoc imzada güvenli zaman damgası istenmez (ve gereksiz yere yavaştır);
@@ -35,7 +43,7 @@ TIMESTAMP_FLAG="--timestamp"
 echo "▸ Derleniyor (release)…"
 swift build -c release --disable-sandbox
 
-SPARKLE_FRAMEWORK="$(find .build/artifacts/sparkle -type d -name "Sparkle.framework" -path "*macos*" | head -1)"
+SPARKLE_FRAMEWORK="$(find .build/artifacts/sparkle -type d -name "Sparkle.framework" -path "*macos*" | sed -n 1p)"
 [ -z "$SPARKLE_FRAMEWORK" ] && { echo "✗ Sparkle.framework bulunamadı; 'swift package resolve' çalıştır."; exit 1; }
 
 echo "▸ Paket hazırlanıyor…"
