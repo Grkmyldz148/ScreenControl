@@ -12,6 +12,9 @@
 #         --apple-id "<apple-id>" --team-id "R9WY247JU6" --password "<app-specific-password>"
 #   • Sparkle EdDSA özel anahtarı login keychain'de (generate_keys ile üretilir)
 #   • gh CLI, yetkilendirilmiş
+#
+# CI de aynı betiği çalıştırır; oradaki farklar NOTARY_KEYCHAIN ve
+# SPARKLE_ED_PRIVATE_KEY ortam değişkenleriyle anlatılır.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -19,6 +22,11 @@ APP_NAME="ScreenControl"
 REPO="Grkmyldz148/ScreenControl"
 TEAM_ID="R9WY247JU6"
 NOTARY_PROFILE="${NOTARY_PROFILE:-ScreenControl}"
+
+# CI, sertifikayı kalıcı login keychain'e değil, koşu sonunda silinen geçici bir
+# keychain'e alıyor; notarytool profili de orada. Yerelde bu boş kalır.
+NOTARY_ARGS=(--keychain-profile "$NOTARY_PROFILE")
+[ -n "${NOTARY_KEYCHAIN:-}" ] && NOTARY_ARGS+=(--keychain "$NOTARY_KEYCHAIN")
 
 VERSION="${1:-}"
 DRY_RUN=false
@@ -44,7 +52,7 @@ step "Ön koşullar denetleniyor"
 security find-identity -v -p codesigning 2>/dev/null | grep -q "Developer ID Application" \
   || fail "Developer ID Application sertifikası bulunamadı. Apple Developer Program üyeliği gerekiyor."
 
-xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1 || fail \
+xcrun notarytool history "${NOTARY_ARGS[@]}" >/dev/null 2>&1 || fail \
 "notarytool profili '$NOTARY_PROFILE' bulunamadı. Bir kez şunu çalıştır:
 
   xcrun notarytool store-credentials \"$NOTARY_PROFILE\" \\
@@ -58,8 +66,10 @@ command -v gh >/dev/null || fail "gh CLI kurulu değil (brew install gh)."
 $DRY_RUN || gh auth status >/dev/null 2>&1 || fail "gh yetkilendirilmemiş (gh auth login)."
 
 [ -x "$SPARKLE_BIN/generate_appcast" ] || fail "Sparkle araçları yok; 'swift package resolve' çalıştır."
-"$SPARKLE_BIN/generate_keys" -p >/dev/null 2>&1 \
-  || fail "Sparkle EdDSA özel anahtarı keychain'de yok; '$SPARKLE_BIN/generate_keys' çalıştır."
+if [ -z "${SPARKLE_ED_PRIVATE_KEY:-}" ]; then
+    "$SPARKLE_BIN/generate_keys" -p >/dev/null 2>&1 \
+      || fail "Sparkle EdDSA özel anahtarı keychain'de yok; '$SPARKLE_BIN/generate_keys' çalıştır."
+fi
 
 if ! $DRY_RUN; then
     [ -z "$(git status --porcelain)" ] || fail "Çalışma ağacı temiz değil; önce commit et."
@@ -97,7 +107,7 @@ echo "   $(grep '^Authority=Developer ID Application' <<<"$SIGN_INFO")"
 step "Notarization'a gönderiliyor (birkaç dakika sürebilir)"
 NOTARIZE_ZIP="$DIST/.notarize.zip"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$NOTARIZE_ZIP"
-xcrun notarytool submit "$NOTARIZE_ZIP" --keychain-profile "$NOTARY_PROFILE" --wait \
+xcrun notarytool submit "$NOTARIZE_ZIP" "${NOTARY_ARGS[@]}" --wait \
   || fail "Notarization başarısız. Ayrıntı: xcrun notarytool log <submission-id> --keychain-profile $NOTARY_PROFILE"
 rm -f "$NOTARIZE_ZIP"
 
@@ -128,7 +138,7 @@ rm -rf "$STAGING"
 # açılırken karantina uyarısı verir.
 DMG_IDENTITY="$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | sed -E 's/.*"(.*)"/\1/')"
 codesign --force --timestamp --sign "$DMG_IDENTITY" "$DMG"
-xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait \
+xcrun notarytool submit "$DMG" "${NOTARY_ARGS[@]}" --wait \
   || fail "DMG notarization başarısız."
 xcrun stapler staple "$DMG"
 xcrun stapler validate "$DMG"
@@ -144,12 +154,23 @@ cp "$ZIP" "$ARCHIVES/"
 # Sürüm notları: Notes/<sürüm>.md varsa Sparkle penceresinde gösterilir.
 [ -f "Notes/$VERSION.md" ] && cp "Notes/$VERSION.md" "$ARCHIVES/$APP_NAME-$VERSION.md"
 
-"$SPARKLE_BIN/generate_appcast" \
-  --download-url-prefix "https://github.com/$REPO/releases/download/v$VERSION/" \
-  --link "https://github.com/$REPO" \
-  --full-release-notes-url "https://github.com/$REPO/releases" \
-  --embed-release-notes \
-  "$ARCHIVES"
+generate_appcast() {
+    "$SPARKLE_BIN/generate_appcast" \
+      --download-url-prefix "https://github.com/$REPO/releases/download/v$VERSION/" \
+      --link "https://github.com/$REPO" \
+      --full-release-notes-url "https://github.com/$REPO/releases" \
+      --embed-release-notes \
+      "$@" \
+      "$ARCHIVES"
+}
+
+# Anahtar yalnızca boru hattından geçiyor: argüman olarak verilseydi `ps` çıktısına,
+# dosyaya yazılsaydı runner diskine düşerdi.
+if [ -n "${SPARKLE_ED_PRIVATE_KEY:-}" ]; then
+    printf '%s' "$SPARKLE_ED_PRIVATE_KEY" | generate_appcast --ed-key-file -
+else
+    generate_appcast
+fi
 
 cp "$ARCHIVES/appcast.xml" appcast.xml
 echo "   appcast.xml güncellendi:"

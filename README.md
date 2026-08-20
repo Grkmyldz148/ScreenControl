@@ -298,6 +298,10 @@ rather than a `.strings` catalogue, so PRs adding localisation are welcome.
 
 Only relevant if you maintain a fork.
 
+Releases run from GitHub Actions: **Actions → Release → Run workflow**, entering
+the version. The same script runs locally when you would rather not wait on a
+runner:
+
 ```bash
 ./release.sh 1.1.0 --dry-run   # build + notarize + package, publish nothing
 ./release.sh 1.1.0             # …and publish to GitHub
@@ -312,7 +316,7 @@ The ZIP is what Sparkle downloads; the DMG is for humans. `appcast.xml` on `main
 the update feed — installed copies only see a new version once it is pushed, which is
 why publishing the release and pushing the appcast happen in that order.
 
-It needs, one time:
+Running it **locally** needs, one time:
 
 ```bash
 # Apple notarization credentials
@@ -322,6 +326,23 @@ xcrun notarytool store-credentials "ScreenControl" \
 # Sparkle update-signing key (private key lands in your login keychain)
 .build/artifacts/sparkle/Sparkle/bin/generate_keys
 ```
+
+Running it **in CI** needs the same three credentials as repository secrets:
+
+| Secret | What it is |
+|---|---|
+| `DEVELOPER_ID_P12` | Developer ID Application identity, `.p12`, base64 |
+| `DEVELOPER_ID_P12_PASSWORD` | password for that `.p12` |
+| `NOTARY_APPLE_ID`, `NOTARY_TEAM_ID`, `NOTARY_PASSWORD` | notarization, using an app-specific password |
+| `SPARKLE_ED_PRIVATE_KEY` | EdDSA key that signs updates (`generate_keys -x`) |
+
+The workflow imports the certificate into a keychain it creates for that run and
+deletes afterwards, and passes the Sparkle key to `generate_appcast` on stdin so
+it never reaches disk or a process listing. Two things are worth understanding
+before you copy this setup: anyone who can push to the repository can sign code
+as you, and the Sparkle key in particular is the ability to push an update to
+every installed copy. GitHub does withhold secrets from pull requests opened by
+forks, which is what makes this tolerable on a public repository.
 
 If you fork this, generate **your own** EdDSA key and put its public half in
 `build.sh` (`PUBLIC_ED_KEY`), and point `FEED_URL` at your own repository. Otherwise
