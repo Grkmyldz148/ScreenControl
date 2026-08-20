@@ -1,5 +1,7 @@
 # ScreenControl
 
+[![CI](https://github.com/Grkmyldz148/ScreenControl/actions/workflows/ci.yml/badge.svg)](https://github.com/Grkmyldz148/ScreenControl/actions/workflows/ci.yml)
+
 A menu bar app that controls **external monitor brightness** on Apple Silicon Macs,
 keeps it in sync with the built-in display, and lets you drive both from the
 **F1/F2 brightness keys**.

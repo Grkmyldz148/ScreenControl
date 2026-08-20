@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and package
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: swift --version
+
+      # Sparkle ikili bir bağımlılık; her çalıştırmada yeniden indirmek derlemeden
+      # uzun sürüyor.
+      # Yalnızca bağımlılıklar: derleme çıktısını da önbelleğe alsak
+      # commit'ler arasında bayat nesneler taşınırdı.
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build/artifacts
+            .build/checkouts
+            .build/repositories
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved') }}
+
+      - name: Build and bundle
+        run: ./build.sh
+
+      # build.sh CI'da Developer ID bulamayıp ad-hoc imzaya düşer; paketin
+      # kendisi yine de eksiksiz kurulmalı.
+      - name: Verify bundle layout
+        run: |
+          set -euo pipefail
+          APP=.build/bundle/ScreenControl.app
+          # Değişken adı `path` değil: zsh'de $path doğrudan $PATH'e bağlıdır ve
+          # bu betiği bir kabuğa yapıştıran herkesin ortamını bozar.
+          for entry in \
+              "Contents/MacOS/ScreenControl" \
+              "Contents/Info.plist" \
+              "Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle" \
+              "Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate" \
+              "Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app" \
+              "Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc" \
+              "Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc" ; do
+            [ -e "$APP/$entry" ] || { echo "::error::eksik: $entry"; exit 1; }
+          done
+
+          # Sparkle @rpath üzerinden bağlanıyor; rpath düşerse uygulama ancak
+          # kullanıcının makinesinde, açılışta çöker.
+          otool -l "$APP/Contents/MacOS/ScreenControl" | grep -q "@executable_path/../Frameworks" \
+            || { echo "::error::Frameworks rpath'i yok"; exit 1; }
+
+      - name: Verify signature
+        run: codesign --verify --deep --strict --verbose=2 .build/bundle/ScreenControl.app
+
+      - name: Verify update settings
+        run: |
+          set -euo pipefail
+          APP=.build/bundle/ScreenControl.app
+          plist="$APP/Contents/Info.plist"
+          feed="$(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$plist")"
+          key="$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$plist")"
+
+          # Sparkle http bir beslemeyi sessizce reddeder, bunu ancak kullanıcı fark eder.
+          case "$feed" in https://*) ;; *) echo "::error::besleme https değil: $feed"; exit 1 ;; esac
+          [ -n "$key" ] || { echo "::error::SUPublicEDKey boş"; exit 1; }
+
+          # Paketteki sürüm ile depodaki VERSION dosyası ayrışırsa, yayınlanan
+          # appcast girdisi yanlış sürümü işaret eder.
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")"
+          [ "$version" = "$(cat VERSION)" ] \
+            || { echo "::error::sürüm uyuşmuyor: paket $version, VERSION $(cat VERSION)"; exit 1; }
+
+  feed:
+    name: Update feed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate appcast
+        run: |
+          set -euo pipefail
+          command -v xmllint >/dev/null || sudo apt-get install -y --no-install-recommends libxml2-utils
+          [ -f appcast.xml ] || { echo "appcast.xml yok — henüz yayın yapılmamış"; exit 0; }
+
+          xmllint --noout appcast.xml
+
+          # Her girdinin imzası olmalı: imzasız bir enclosure'ı Sparkle indirir
+          # ve reddeder, yani güncelleme sessizce hiç gelmez.
+          items=$(xmllint --xpath 'count(//item)' appcast.xml)
+          signed=$(xmllint --xpath 'count(//enclosure[@*[local-name()="edSignature"]])' appcast.xml)
+          echo "girdi: $items, imzalı: $signed"
+          [ "$items" -gt 0 ] || { echo "::error::appcast boş"; exit 1; }
+          [ "$items" = "$signed" ] || { echo "::error::imzasız girdi var"; exit 1; }
+
+          # En yeni girdi VERSION ile aynı sürümü göstermeli.
+          latest=$(xmllint --xpath 'string((//item)[1]/*[local-name()="shortVersionString"])' appcast.xml)
+          [ "$latest" = "$(cat VERSION)" ] \
+            || { echo "::error::appcast $latest gösteriyor, VERSION $(cat VERSION)"; exit 1; }
+
+      - name: Verify every download still resolves
+        run: |
+          set -euo pipefail
+          [ -f appcast.xml ] || exit 0
+          # Silinmiş ya da yeniden adlandırılmış bir release varlığı beslemeyi
+          # kurulu her kopya için bozar; bunu burada yakalıyoruz.
+          urls=$(grep -o 'url="[^"]*"' appcast.xml | sed 's/url="//;s/"//')
+          for url in $urls; do
+            code=$(curl -sSL -o /dev/null -w '%{http_code}' --retry 3 --max-time 60 "$url")
+            echo "$code  $url"
+            [ "$code" = "200" ] || { echo "::error::$url → $code"; exit 1; }
+          done
