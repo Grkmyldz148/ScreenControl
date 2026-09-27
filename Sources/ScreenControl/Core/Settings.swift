@@ -18,6 +18,8 @@ final class Settings {
         static let backlightOffAtZero = "backlightOffAtZero"
         static let trace = "traceEnabled"
         static let lastBrightness = "lastBrightness"
+        static let remoteControl = "remoteControlEnabled"
+        static let remoteToken = "remoteControlToken"
     }
 
     private init() {
@@ -102,6 +104,34 @@ final class Settings {
         var all = defaults.dictionary(forKey: Key.lastBrightness) ?? [:]
         all[displayKey] = NSNumber(value: value)
         defaults.set(all, forKey: Key.lastBrightness)
+    }
+
+    // MARK: - Telefondan kontrol
+
+    /// Yerel ağdan (telefonun tarayıcısından) parlaklık ayarlamaya izin ver.
+    var remoteControlEnabled: Bool {
+        get { defaults.bool(forKey: Key.remoteControl) }
+        set { defaults.set(newValue, forKey: Key.remoteControl) }
+    }
+
+    /// Telefondaki bağlantının içindeki gizli anahtar. İlk ihtiyaçta üretilir;
+    /// yenilenirse eski bağlantılar geçersiz olur.
+    var remoteToken: String {
+        if let token = defaults.string(forKey: Key.remoteToken), !token.isEmpty { return token }
+        return regenerateRemoteToken()
+    }
+
+    @discardableResult
+    func regenerateRemoteToken() -> String {
+        // Swift'in varsayılan üreteci Darwin'de arc4random_buf, yani kriptografik.
+        let bytes = (0..<16).map { _ in UInt8.random(in: .min ... .max) }
+        // base64url: QR kodda ve URL'de kaçış gerektirmesin.
+        let token = Data(bytes).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        defaults.set(token, forKey: Key.remoteToken)
+        return token
     }
 
     // MARK: - Girişte başlat

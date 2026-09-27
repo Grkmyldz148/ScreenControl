@@ -4,6 +4,7 @@ import AppKit
 struct ControlPanelView: View {
     @ObservedObject var controller: BrightnessController
     @ObservedObject var updater: UpdateController
+    @ObservedObject var remote: RemoteServer
     @ObservedObject var settings = SettingsBridge.shared
 
     var onQuit: () -> Void
@@ -33,6 +34,11 @@ struct ControlPanelView: View {
             if hasSyncableSetup {
                 Divider()
                 syncSection
+            }
+
+            if settings.remoteControl {
+                Divider()
+                RemoteSection(remote: remote)
             }
 
             if settings.interceptKeys && !controller.keyTapActive {
@@ -71,6 +77,7 @@ struct ControlPanelView: View {
             Toggle("Show on-screen HUD", isOn: $settings.showHUD)
             Toggle("Show percentage in menu bar", isOn: $settings.showPercentage)
             Toggle("Restore brightness on wake", isOn: $settings.restoreOnWake)
+            Toggle("Control from phone", isOn: $settings.remoteControl)
             Divider()
             Button("Rescan displays") { controller.refreshDisplays() }
             if updater.isAvailable {
@@ -343,6 +350,7 @@ final class SettingsBridge: ObservableObject {
 
     var onInterceptKeysChanged: (() -> Void)?
     var onMenuBarAppearanceChanged: (() -> Void)?
+    var onRemoteControlChanged: (() -> Void)?
 
     @Published var launchAtLogin: Bool = Settings.shared.launchAtLogin {
         didSet { Settings.shared.launchAtLogin = launchAtLogin }
@@ -367,6 +375,12 @@ final class SettingsBridge: ObservableObject {
     }
     @Published var restoreOnWake: Bool = Settings.shared.restoreOnWake {
         didSet { Settings.shared.restoreOnWake = restoreOnWake }
+    }
+    @Published var remoteControl: Bool = Settings.shared.remoteControlEnabled {
+        didSet {
+            Settings.shared.remoteControlEnabled = remoteControl
+            onRemoteControlChanged?()
+        }
     }
     @Published var backlightOffAtZero: Bool = Settings.shared.backlightOffAtZero {
         didSet {

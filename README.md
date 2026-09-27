@@ -28,6 +28,8 @@ to **true black** — because DDC brightness `0` does not turn the backlight off
 - **On-screen HUD** that names the display being changed.
 - **Hot-plug and sleep aware** — rediscovers displays, re-applies dimming after wake.
 - **Never leaves you in the dark** — three independent recovery paths (see below).
+- **Phone remote** — brightness and volume from your phone's browser over Wi-Fi.
+  Scan a QR code once; no app to install on the phone.
 - **Automatic updates** — signed with Sparkle, checked daily, installed in place.
 - `--diagnose` mode for troubleshooting.
 
@@ -98,6 +100,44 @@ The gear menu holds: launch at login, key interception, **dim below zero**,
 
 When the slider drops under 25% a 🌙 appears on that row (gamma dimming is active);
 at exactly zero the row shows a `backlight off` badge.
+
+### Phone remote
+
+Turn on **Control from phone** in the gear menu, press **Show QR** in the panel, and scan
+it with your phone's camera. The page that opens has a slider for every display, the
+Mac's output volume, and the link toggle. Add it to your home screen to keep it one tap
+away. Works on Android and iPhone alike, in any browser.
+
+The phone has to be on the same network as the Mac, and the Mac has to be awake.
+
+Volume works on any output macOS can set a level for — the built-in speakers, headphones,
+AirPods and most Bluetooth devices. Audio interfaces with a hardware knob and most
+HDMI/DisplayPort outputs have a fixed level; for those the page shows **− / Mute / +**
+buttons that press the Mac's volume keys instead, which apps like SoundSource pick up.
+
+**Security.** The server only accepts connections from private addresses (your LAN,
+Tailscale, the Mac itself), so a forwarded port or a public IPv6 address does not
+expose it. Every API call also has to carry the secret from the QR code. **New link**
+replaces that secret and cuts off every phone that had the old one. Don't forward
+port `18765` to the internet; for access from outside, use a VPN such as Tailscale.
+
+**API** — for automation apps like HTTP Shortcuts (Android) or Shortcuts (iOS). Send the
+secret as `Authorization: Bearer <secret>`; it is the `t=` value in the QR link.
+
+| Request | Body | Effect |
+|---|---|---|
+| `GET /api/state` | — | displays, link state, volume |
+| `POST /api/brightness` | `{"percent": 30}` | all displays (linked: like `F1`/`F2`) |
+| `POST /api/brightness` | `{"delta": -10}` | step down by 10 points |
+| `POST /api/brightness` | `{"display": "external", "percent": 0}` | monitor only; `"builtin"` for the laptop |
+| `POST /api/volume` | `{"percent": 40}` / `{"delta": 5}` | output volume |
+| `POST /api/volume` | `{"muted": true}` | mute / unmute |
+| `POST /api/volume` | `{"key": "up"}` | press a volume key: `up`, `down`, `mute` |
+| `POST /api/link` | `{"enabled": false}` | link displays on / off |
+
+```bash
+curl -H "Authorization: Bearer $SECRET" -d '{"delta": -10}' http://192.168.1.20:18765/api/brightness
+```
 
 ### Making the two displays match
 
@@ -282,7 +322,12 @@ Sources/ScreenControl/
 ├── Core/Settings.swift             UserDefaults + launch at login
 ├── Input/MediaKeyTap.swift         F1/F2 interception
 ├── Update/UpdateController.swift   Sparkle automatic updates
+├── Remote/RemoteServer.swift       phone remote: server, access rules, API
+├── Remote/RemotePage.swift         the page the phone opens
+├── Remote/HTTP.swift               minimal HTTP/1.1 parsing
+├── Audio/SystemVolume.swift        output volume via CoreAudio
 ├── UI/ControlPanelView.swift       menu bar panel
+├── UI/RemoteSection.swift          QR code and link in the panel
 ├── UI/BrightnessHUD.swift          on-screen indicator
 ├── AppDelegate.swift               status item, popover
 └── Diagnostics.swift               --diagnose

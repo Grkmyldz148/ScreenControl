@@ -80,6 +80,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>NSHighResolutionCapable</key><true/>
     <!-- Menü çubuğunda yaşayan uygulama: Dock ikonu ve uygulama menüsü yok. -->
     <key>LSUIElement</key><true/>
+    <!-- Telefondan kontrol: yerel ağdan gelen bağlantıları kabul eder. -->
+    <key>NSLocalNetworkUsageDescription</key><string>ScreenControl lets your phone adjust display brightness over your home network.</string>
     <!-- Sparkle: otomatik güncelleme -->
     <key>SUFeedURL</key><string>$FEED_URL</string>
     <key>SUPublicEDKey</key><string>$PUBLIC_ED_KEY</string>

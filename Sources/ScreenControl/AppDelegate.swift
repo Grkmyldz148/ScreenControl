@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let controller = BrightnessController()
     private let hud = BrightnessHUD()
     private let updater = UpdateController()
+    private lazy var remote = RemoteServer(controller: controller)
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
 
@@ -22,9 +23,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MediaKeyTap.requestAccessibilityPermission()
         }
         controller.start()
+        applyRemoteControlSetting()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        remote.stop()
         controller.stop()
         SoftwareDimmer.shared.restoreAll()
     }
@@ -46,7 +49,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.behavior = .transient
         popover.animates = true
         popover.contentViewController = NSHostingController(
-            rootView: ControlPanelView(controller: controller, updater: updater) { NSApp.terminate(nil) }
+            rootView: ControlPanelView(controller: controller, updater: updater, remote: remote) {
+                NSApp.terminate(nil)
+            }
         )
     }
 
@@ -62,6 +67,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         bridge.onMenuBarAppearanceChanged = { [weak self] in
             self?.updateStatusItemTitle()
         }
+        bridge.onRemoteControlChanged = { [weak self] in
+            self?.applyRemoteControlSetting()
+        }
+        remote.onChange = { [weak self] in
+            self?.updateStatusItemTitle()
+        }
 
         controller.onBrightnessChanged = { [weak self] snapshot in
             guard let self else { return }
@@ -69,6 +80,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.hud.show(value: snapshot.brightness, title: snapshot.name, on: snapshot.id)
             }
             self.updateStatusItemTitle()
+        }
+    }
+
+    private func applyRemoteControlSetting() {
+        if Settings.shared.remoteControlEnabled {
+            remote.start()
+        } else {
+            remote.stop()
         }
     }
 
