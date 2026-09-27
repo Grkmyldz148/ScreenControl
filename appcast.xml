@@ -3,6 +3,36 @@
     <channel>
         <title>ScreenControl</title>
         <item>
+            <title>1.2.0</title>
+            <pubDate>Sun, 27 Sep 2026 12:54:54 +0000</pubDate>
+            <link>https://github.com/Grkmyldz148/ScreenControl</link>
+            <sparkle:fullReleaseNotesLink>https://github.com/Grkmyldz148/ScreenControl/releases</sparkle:fullReleaseNotesLink>
+            <sparkle:version>1.2.0</sparkle:version>
+            <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[Control your displays and volume from your phone.
+
+Turn on **Control from phone** in the gear menu, press **Show QR** in the panel,
+and scan it with your phone's camera. The page that opens has a slider for every
+display, Off/25/50/100% buttons, the link toggle and the Mac's volume. It works in
+any phone browser — Android or iPhone — with nothing to install. Add it to your
+home screen to keep it one tap away.
+
+- Only devices on your own network (or Tailscale) can connect, and every request
+  has to carry the secret from the QR code. **New link** revokes it.
+- Volume follows the output device when macOS can set its level. For audio
+  interfaces with a hardware knob, the page offers − / Mute / + buttons that press
+  the volume keys, so apps like SoundSource pick them up.
+- Automation apps such as HTTP Shortcuts can use the same API; see the README.
+
+The panel now always opens directly below the menu bar, on the screen whose icon
+you clicked. With a monitor arranged above the laptop it used to open half
+off-screen, and it no longer slides away with an auto-hiding menu bar.
+]]></description>
+            <enclosure url="https://github.com/Grkmyldz148/ScreenControl/releases/download/v1.2.0/ScreenControl-1.2.0.zip" length="1565994" type="application/octet-stream" sparkle:edSignature="GCF8Z5fjQwQAohXgE+SQ7jz85u/4j8/+Lex2mj91FghagpntseFlRtb4CrZpS/lJHrW/8fedIIzg0tegEN5XDw=="/>
+        </item>
+        <item>
             <title>1.1.0</title>
             <pubDate>Thu, 20 Aug 2026 09:23:33 +0000</pubDate>
             <link>https://github.com/Grkmyldz148/ScreenControl</link>
