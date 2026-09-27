@@ -9,14 +9,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let updater = UpdateController()
     private lazy var remote = RemoteServer(controller: controller)
     private var statusItem: NSStatusItem!
-    private var popover: NSPopover!
+    private var panel: StatusPanel!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Dock ikonu ve menü çubuğu menüsü olmayan, sadece status item'da yaşayan uygulama.
         NSApp.setActivationPolicy(.accessory)
 
         setUpStatusItem()
-        setUpPopover()
+        setUpPanel()
         wireCallbacks()
 
         if Settings.shared.interceptBrightnessKeys, !MediaKeyTap.hasAccessibilityPermission {
@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        panel.close()
         remote.stop()
         controller.stop()
         SoftwareDimmer.shared.restoreAll()
@@ -40,15 +41,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.image = NSImage(systemSymbolName: "sun.max", accessibilityDescription: "Brightness")
         button.image?.isTemplate = true
         button.imagePosition = .imageLeading
-        button.action = #selector(togglePopover)
+        button.action = #selector(togglePanel)
         button.target = self
     }
 
-    private func setUpPopover() {
-        popover = NSPopover()
-        popover.behavior = .transient
-        popover.animates = true
-        popover.contentViewController = NSHostingController(
+    private func setUpPanel() {
+        panel = StatusPanel(
             rootView: ControlPanelView(controller: controller, updater: updater, remote: remote) {
                 NSApp.terminate(nil)
             }
@@ -104,14 +102,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Etkileşim
 
-    @objc private func togglePopover() {
+    @objc private func togglePanel() {
         guard let button = statusItem.button else { return }
-        if popover.isShown {
-            popover.performClose(nil)
+        if panel.isShown {
+            panel.close()
         } else {
             controller.refreshDisplays()
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            panel.show(below: button)
         }
     }
 }

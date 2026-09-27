@@ -327,6 +327,7 @@ Sources/ScreenControl/
 ├── Remote/HTTP.swift               minimal HTTP/1.1 parsing
 ├── Audio/SystemVolume.swift        output volume via CoreAudio
 ├── UI/ControlPanelView.swift       menu bar panel
+├── UI/StatusPanel.swift            the window it lives in, placed under the menu bar
 ├── UI/RemoteSection.swift          QR code and link in the panel
 ├── UI/BrightnessHUD.swift          on-screen indicator
 ├── AppDelegate.swift               status item, popover
