@@ -90,7 +90,11 @@ jobs:
       - name: Validate appcast
         run: |
           set -euo pipefail
-          command -v xmllint >/dev/null || sudo apt-get install -y --no-install-recommends libxml2-utils
+          # Runner imajındaki paket listesi bayatlayabiliyor; güncellemeden kurmak 404 veriyor.
+          command -v xmllint >/dev/null || {
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends libxml2-utils
+          }
           [ -f appcast.xml ] || { echo "appcast.xml yok — henüz yayın yapılmamış"; exit 0; }
 
           xmllint --noout appcast.xml

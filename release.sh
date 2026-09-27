@@ -65,7 +65,10 @@ App-specific password: https://account.apple.com → Oturum Açma ve Güvenlik �
 command -v gh >/dev/null || fail "gh CLI kurulu değil (brew install gh)."
 $DRY_RUN || gh auth status >/dev/null 2>&1 || fail "gh yetkilendirilmemiş (gh auth login)."
 
-[ -x "$SPARKLE_BIN/generate_appcast" ] || fail "Sparkle araçları yok; 'swift package resolve' çalıştır."
+# GitHub, 7 gün kullanılmayan önbelleği siliyor; o zaman araçlar ilk derlemeden
+# önce diskte olmuyor. Paketleri çözmek Sparkle'ın ikili paketini (araçlarla) indirir.
+[ -x "$SPARKLE_BIN/generate_appcast" ] || swift package resolve >/dev/null
+[ -x "$SPARKLE_BIN/generate_appcast" ] || fail "Sparkle araçları 'swift package resolve' sonrasında da yok."
 if [ -z "${SPARKLE_ED_PRIVATE_KEY:-}" ]; then
     "$SPARKLE_BIN/generate_keys" -p >/dev/null 2>&1 \
       || fail "Sparkle EdDSA özel anahtarı keychain'de yok; '$SPARKLE_BIN/generate_keys' çalıştır."
